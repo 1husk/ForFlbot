@@ -1,0 +1,555 @@
+from aiogram import types,Dispatcher
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State,StatesGroup
+from aiogram.types import ReplyKeyboardRemove,ReplyKeyboardMarkup, KeyboardButton
+from create_bot import dp,bot
+from aiogram.dispatcher.filters import Text
+import random
+import time
+from time import monotonic
+        
+
+table_casino = ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True)
+next_markup = ReplyKeyboardMarkup(resize_keyboard=True,one_time_keyboard=True)
+Red_btn = KeyboardButton('Red🔴')
+Black_btn = KeyboardButton('Black⚫️')
+Zero_btn = KeyboardButton('Zero')
+one_btn = KeyboardButton('1 to 12')
+two_btn = KeyboardButton('12 to 24')
+three_btn = KeyboardButton('24 to 36')
+OneTo18_btn = KeyboardButton('1 to 18')
+EighteenTo36_btn = KeyboardButton('18 to 36')
+cancel_btn = KeyboardButton('❌Отмена❌')
+next_btn = KeyboardButton('Продолжить✅')
+no_next_btn = KeyboardButton('❌Выйти❌')
+next_markup.row(next_btn,no_next_btn)
+table_casino.row(Red_btn,Black_btn).row(one_btn,two_btn,three_btn).row(OneTo18_btn,EighteenTo36_btn).row(Zero_btn,cancel_btn) 
+#@dp.message_handler(commands=['start','help'])
+async def start_command(message : types.Message):
+    await message.reply(f'Привет {message.from_user.first_name}!\nЯ казино бот, чтобы начать играть введи /casino')
+    number = random.randint(1,5)
+    if number == 4:
+        await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFm8Ri_5xkvgWl5p6kpVLJqzT6jfNE-wACxgUAAsEYngu9CeslxX5vwSkE') 
+    elif number == 5:
+        await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFm8Zi_51WrYqNrtiVKrrGwx4UcqWAWQACNhUAAhksiUhA4SdaRoT-CCkE')
+    else:
+        pass    
+class FSMCasino(StatesGroup):
+    CasinoChoice = State()
+    Bet = State() #Bet = ставка
+money = 100
+
+#@dp.message_handler(commands=['casino'],state=None)
+#@dp.message_handler(Text(equals='Продолжить✅',ignore_case=True),state=None)
+async def casino_func(message : types.Message):
+    global ID       
+    await FSMCasino.CasinoChoice.set()
+    await message.reply('На что будете ставить?',reply_markup=table_casino)
+    ID = message.from_user.id
+
+
+#@dp.message_handler(state='*',commands='❌Отмена❌')
+#@dp.message_handler(Text(equals='❌Отмена❌',ignore_case=True),state='*')
+async def cancel_handler(message : types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return              
+    await state.finish()
+    r_number = random.randint(1,5)
+    if r_number == 1 or r_number == 2:
+        await message.reply('Хорошо!')
+    elif r_number == 3:
+        bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnAhi_65vsjJy_jq7sx3dfSJUAAHUudUAAqoFAALBGJ4LkULCX7B3BT8pBA')     
+    elif r_number == 4:
+        await message.reply('Так точно!')
+    elif r_number == 5:
+        bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnA5i_67fs3EIjlUyv5b1dhZ8LXlnQAACWhYAAtEFiUh8xdBosQjPMikE')
+        time.sleep(1)
+        await bot.send_message(message.from_user.id,'Ладно...') 
+
+#@dp.message_handler(state='*',commands='❌Отмена❌')
+#@dp.message_handler(Text(equals='❌Отмена❌',ignore_case=True),state='*')
+async def exit_handler(message : types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return              
+    await state.finish()
+    r_number = random.randint(1,5)
+    if r_number == 1 or r_number == 2:
+        await message.reply('Хорошо!')
+    elif r_number == 3:
+        bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnAhi_65vsjJy_jq7sx3dfSJUAAHUudUAAqoFAALBGJ4LkULCX7B3BT8pBA')     
+    elif r_number == 4:
+        await message.reply('Так точно!')
+    elif r_number == 5:
+        bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnA5i_67fs3EIjlUyv5b1dhZ8LXlnQAACWhYAAtEFiUh8xdBosQjPMikE')
+        time.sleep(1)
+        await bot.send_message(message.from_user.id,'Ладно...')
+
+#@dp.message_handler(state=FSMCasino.CasinoChoice)
+async def CasinoChoice_func(message : types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['CasinoChoice'] = message.text
+    await FSMCasino.next()
+    await message.reply('Сколько поставишь?')
+
+#@dp.message_handler(state=FSMCasino.Bet)
+async def bet_func(message : types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        global money
+        try:
+            if int(message.text) <= money:
+                jelous = int(message.text)
+                jelous += 1
+                jelous -= 1
+                data['Bet'] = message.text
+            else:
+                await message.answer('Эта ставка вам не по карману')
+        except ValueError:
+            await message.answer('Введите число, без символов!')
+            print()     
+    async with state.proxy() as data:
+        CasinoChoice1 = data['CasinoChoice']
+        Bet1 = data['Bet'] 
+        red = 0
+        black = 0   
+        await message.answer('Ставка принята\nНачинаю крутить рулетку')
+        number_casino = random.randint(0,36)
+        time.sleep(1)
+        if number_casino == 0:
+            await message.answer(f'Выпало число = 0')
+        elif number_casino % 2 == 0:
+            await message.answer(f'Выпало число = {number_casino}🔴')
+            red = 1
+            black = 0
+        else:
+            await message.answer(f'Выпало число = {number_casino}⚫️')
+            red = 0
+            black = 1
+        if CasinoChoice1 == 'Red🔴': 
+            if red == 1:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                    await message.answer('Продолжить?',reply_markup=next_markup)
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                    await message.answer('Продолжить?',reply_markup=next_markup)
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')
+                    await message.answer('Продолжить?',reply_markup=next_markup)        
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                    await message.answer('Продолжить?',reply_markup=next_markup)
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                    await message.answer('Продолжить?',reply_markup=next_markup)
+                money += int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)    
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                    if monotonic() - t > 30:
+                        await message.send_message('Вам перечислено 100$')
+                        await message.send_message('Чтобы проверить счёт введите /счёт')
+                        break
+                else:
+                    pass            
+        elif CasinoChoice1 == "Black⚫️":
+            if black == 1:              
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif message_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass            
+        elif CasinoChoice1 == '1 to 12':
+            if number_casino <= 12:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 2
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass            
+        elif CasinoChoice1 == '12 to 24':
+            if 12 <= number_casino <= 24:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 2
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                    pass            
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.asnwer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass            
+        elif CasinoChoice1 == '24 to 36':
+            if 24 <= number_casino <= 36:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 2
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass
+        elif CasinoChoice1 == '18 to 36':
+            if 18 <= number_casino <= 36:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 2
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass
+        elif CasinoChoice1 == '1 to 18':
+            if 24 <= number_casino <= 36:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 2
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass                                                    
+        elif CasinoChoice1 == 'Zero':
+            if number_casino == 0:
+                number_win = random.randint(1,5)
+                if number_win == 1:
+                    await message.answer('Ура, ты победил\n Поздравляю!!!')
+                    await bot.send_sticker(message.from_user.id,sticker='CAACAgIAAxkBAAEFnEhi_7auv_txJYakuW0Bpc_PL_O-vQACwBgAAj37QUhr5CcwixwsjikE')
+                elif number_win == 2:
+                    await message.answer('Твоя ставка победила!')
+                elif number_win == 3:
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgQAAxkBAAEFnFJi_7b-FPzSfx0diOBhS_jD1qFqDAACNgADzjkIDRj6rM2KP14YKQQ')
+                    await message.answer('Ого, а ты везунчик!')     
+                elif number_win == 4:
+                    await message.answer('Твоя ставка победила..')
+                    await bot.send_sticker(message.from_user.id, sticker ='CAACAgIAAxkBAAEFnGZi_7gNTKs8XA3czcvQb9nflMR0vwACqAUAAsEYngvErhOKa9fbmCkE')
+                else:
+                    await message.answer('Ты победил\nСыграешь ещё раз?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHpi_7scw8lWHVyzN80-fQspQKV2HQAC-hMAAqZ-IEiumtCfjdyCEikE')
+                money += int(Bet1) * 35
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+            else:
+                number_lose = random.randint(1,5)
+                if number_lose == 1:
+                    await message.answer('Эх...\nНе повезло..')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHJi_7lyP9XtG_ZtLkEDFtPyd2womQACzSAAAp92mUv9Ccsmq-PolikE')
+                elif number_lose == 2:
+                    await message.answer('Твоя ставка проиграла, продолжаем?')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHRi_7niLqLMn8MIC_vna51wiKWVHgACThcAArwqGEj2iyrYITYjeSkE')
+                elif number_lose == 3:
+                    await message.answer('Ха лох')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHZi_7o9ZOEiICCCmSM40_bAqrKUxwACXxMAApofyEm95m3JEvU0WSkE')
+                elif number_lose == 4:
+                    await message.answer('Ты проиграл\nНо сильно не растраивайся повезёт в следующий раз!')
+                    await bot.send_sticker(message.from_user.id, sticker='CAACAgIAAxkBAAEFnHhi_7rD1F2Sr3w_01FrGj1kFYnNTQAC_xcAAnGc6UpkF7g8ehcplSkE')    
+                elif number_lose == 5:
+                    await message.answer('Ну немного не повезло,с кем не бывает!')
+                money -= int(Bet1)
+                await message.answer(f'Твой счёт = {money}$')
+                await state.finish()
+                await message.answer('Продолжить?',reply_markup=next_markup)
+                if money == 0:
+                    await message.answer('У вас закончились деньги\n через час вам будет начислено 100$')
+                    t = monotonic()
+                    while True:
+                        if monotonic() - t > 30:
+                            await message.send_message('Вам перечислено 100$')
+                            await message.send_message('Чтобы проверить счёт введите /счёт')
+                            break
+                else:
+                    pass                                
+    await state.finish()
+
+def register_handler_casino(dp : Dispatcher):
+    pass
+    dp.register_message_handler(start_command,commands=['start','help'])
+    dp.register_message_handler(casino_func,commands=['casino'],state = None)
+    dp.register_message_handler(casino_func,Text(equals='Продолжить✅',ignore_case=True),state=None)
+    dp.register_message_handler(cancel_handler,state='*',commands='❌Отмена❌')
+    dp.register_message_handler(cancel_handler,Text(equals='❌Отмена❌',ignore_case=True),state='*')
+    dp.register_message_handler(exit_handler,state='*',commands='❌Выйти❌')
+    dp.register_message_handler(exit_handler,Text(equals='❌Выйти❌',ignore_case=True),state='*')
+    dp.register_message_handler(CasinoChoice_func,state=FSMCasino.CasinoChoice)
+    dp.register_message_handler(bet_func,state=FSMCasino.Bet)
